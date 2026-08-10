@@ -1,0 +1,63 @@
+.gauge-section{
+    background-color: whitesmoke;
+     padding: 2px;
+    margin-top: 10px;
+    width:100%
+    
+}
+
+.input-section{
+    padding: 5px;
+    display: inline-block;
+    align-items: center;
+    justify-content: center;
+    gap:20px;
+
+}
+
+.input-section label{
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+  padding: 5px;
+
+}
+
+.input-section input{
+  padding: 10px;
+  align-items: center;
+  display: inline-flex;
+
+}
+.sensor-output{
+ align-items: center;
+ padding: 2px;
+ display: flex;
+ gap: 20px 30px; /* Sets 20px row-gap and 30px column-gap */
+
+}
+
+.gauge-section{
+    display: inline-table;
+    padding: 20px;
+    background-color:aliceblue;
+    gap:40px;
+    width:25%;
+    align-items: center;
+    justify-content: center;
+    
+}
+
+.gauge-inner{
+  font-size: 40px;
+  font-weight:600;
+  width: 150px; /* Set equal width and height for a square */
+  height: 150px;
+  border-radius: 50%; /* Makes the square a circle */
+  border: 2px solid grey; /* Creates a blue circular border */
+  background-color:white; /* Optional: adds a background color */
+  display: flex; /* Optional: for centering content */
+  justify-content: center; /* Optional: for centering content */
+  align-items: center; /* Optional: for centering content */
+  margin-left: 50px;
+  padding: 5px;
+}
+

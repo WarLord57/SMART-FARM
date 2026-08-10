@@ -1,0 +1,19 @@
+.outer-section{
+    margin-top: 10px;
+    border-style:outset;
+    overflow: scroll;
+    height: 400px;
+}
+.section-title{
+    position:absolute;
+    margin: 0px;
+    
+}
+.table-data{
+    width: 100%;
+    color:black;
+    background-color: aliceblue;
+}
+.table-data tr{
+    border: 1px solid;
+}

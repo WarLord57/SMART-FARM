@@ -1,0 +1,71 @@
+.control-panel{
+    top: 0;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    gap:20px;
+
+}
+.status-section{
+    top: 0;
+   align-items: center;
+    justify-content: center;
+    display: flex;
+    gap:20px;
+
+}
+.light-indicator-off{
+    background-image: -webkit-linear-gradient(270deg,red,rgb(196, 104, 104));
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    animation: blink 1s linear infinite; /* Apply the 'blink' animation */
+}
+.light-indicator-on{
+    background-image: -webkit-linear-gradient(270deg,green,lightgreen);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    animation: blink 1s linear infinite; /* Apply the 'blink' animation */
+}
+
+.pump-button-off{
+    background-image: -webkit-linear-gradient(270deg,red,rgb(196, 104, 104));
+    color: black;
+    
+    width: 100px;
+   
+    
+    align-items: center;
+  
+    
+}
+.pump-button-on{
+    background-image: -webkit-linear-gradient(270deg,green,lightgreen);
+    color: black;
+    
+    width: 100px;
+   
+    
+    align-items: center;
+   
+    
+}
+
+@keyframes blink{
+  0% {
+    opacity: 1; /* Fully visible at the start */
+  }
+  50% {
+    opacity: 0; /* Fully transparent halfway through */
+  }
+  100% {
+    opacity: 1; /* Fully visible at the end of the cycle */
+  }
+}
