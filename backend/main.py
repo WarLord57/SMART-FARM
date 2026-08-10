@@ -1,20 +1,20 @@
-# from xmlrpc import client
+from xmlrpc import client
 
 from fastapi import FastAPI,Depends #create api
-# import pymongo #connect to mongodb
-# from pymongo.server_api import ServerApi
+import pymongo #connect to mongodb
+from pymongo.server_api import ServerApi
 
-# import uvicorn #run the api
-# from pydantic import BaseModel,Field
-# from datetime import date,time,datetime,timedelta
-# import json
-# from bson import json_util
-# from fastapi.middleware.cors import CORSMiddleware
-# import pandas as pd
-# import requests
-# import joblib
-# from pathlib import Path
-# from fastapi import FastAPI
+import uvicorn #run the api
+from pydantic import BaseModel,Field
+from datetime import date,time,datetime,timedelta
+import json
+from bson import json_util
+from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
+import requests
+import joblib
+from pathlib import Path
+from fastapi import FastAPI
 
 app = FastAPI()
 
@@ -37,94 +37,94 @@ async def test():
 # client.py
 # import requests
 
-# url_esp8266 = "http://192.168.8.13:80/test"  # Replace with your FastAPI server URL
+url_esp8266 = "http://192.168.8.13:80/test"  # Replace with your FastAPI server URL
 
-# #Instance of fastapi app
-# app = FastAPI()
+#Instance of fastapi app
+app = FastAPI()
 
-# class DataModel():
-#     def connect_db():
-#         try:
-#             #Connect to mongo db client
-#             myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+class DataModel():
+    def connect_db():
+        try:
+            #Connect to mongo db client
+            myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 
-#             #get list of databses 
-#             dblist = myclient.list_database_names()
+            #get list of databses 
+            dblist = myclient.list_database_names()
 
-#             #check if data
-#             if "API" in dblist:
+            #check if data
+            if "API" in dblist:
 
-#                 mydb = myclient["API"]
-#                 mycol = mydb["sensor_data"]
-#             else:
-#                 mydb = myclient["API"]
-#                 mycol = mydb["sensor_data"]
-#                 mycol.insert_one({'name': 'Example Sesnor','value':0,"timestamp":"NA"})
+                mydb = myclient["API"]
+                mycol = mydb["sensor_data"]
+            else:
+                mydb = myclient["API"]
+                mycol = mydb["sensor_data"]
+                mycol.insert_one({'name': 'Example Sesnor','value':0,"timestamp":"NA"})
             
-#             return mycol
-#         except TimeoutError as e :
-#             print(e)
+            return mycol
+        except TimeoutError as e :
+            print(e)
 
-# #Create a model for thr sensor data to received
-# class Sensor_data(BaseModel):
-#     name:str
-#     temperature:float
-#     humidity:float
-#     moisture:float
-#     moisture_p:float
-#     status_moisture:str | None = None,
-#     component1:int
-#     datestamp:date
-#     timestamp: time
+#Create a model for thr sensor data to received
+class Sensor_data(BaseModel):
+    name:str
+    temperature:float
+    humidity:float
+    moisture:float
+    moisture_p:float
+    status_moisture:str | None = None,
+    component1:int
+    datestamp:date
+    timestamp: time
 
-# #Create a model for the filter values that will be passed on ;tHE DEAFULT 
-# class Filter_value(BaseModel):
-#     start_datestamp:date=Field(default=(datetime.now().date()))
-#     end_datestamp:date=Field(default=(datetime.now().date()))
-#     timestamp:time=Field(default=(datetime.now().time()))
-#     frequency: int=Field(default=0)
+#Create a model for the filter values that will be passed on ;tHE DEAFULT 
+class Filter_value(BaseModel):
+    start_datestamp:date=Field(default=(datetime.now().date()))
+    end_datestamp:date=Field(default=(datetime.now().date()))
+    timestamp:time=Field(default=(datetime.now().time()))
+    frequency: int=Field(default=0)
 
-# #Create data model for validating live feed data         
-# class Live_feed(BaseModel):
-#     latest_data:str
+#Create data model for validating live feed data         
+class Live_feed(BaseModel):
+    latest_data:str
 
-# class Switch_Value(BaseModel):
-#      auto:bool=Field(default=False)
-#      number:int =Field(default=0)
+class Switch_Value(BaseModel):
+     auto:bool=Field(default=False)
+     number:int =Field(default=0)
 
-# # Load the trained model once when this module is imported
-
-
-# BASE_DIR = Path(__file__).resolve().parent
-
-# MODEL_PATH = BASE_DIR / "soil_watering_model.pkl"
-
-# model = joblib.load(MODEL_PATH)
+# Load the trained model once when this module is imported
 
 
-# def predict_watering_time(
-#     temperature: float,
-#     humidity: float,
-#     moisture: float,
-#     moisture_p: float
-# ) -> float:
+BASE_DIR = Path(__file__).resolve().parent
 
-#     input_data = pd.DataFrame([{
-#         "temperature": temperature,
-#         "humidity": humidity,
-#         "moisture": moisture,
-#         "moisture_p": moisture_p
-#     }])
+MODEL_PATH = BASE_DIR / "soil_watering_model.pkl"
 
-#     prediction = model.predict(input_data)[0]
+model = joblib.load(MODEL_PATH)
 
-#     return round(float(prediction), 2)
 
-# # Use the port that is on the front end_if you dont use you will have a CORS error
-# origins = [
-#     "http://localhost:5173"
+def predict_watering_time(
+    temperature: float,
+    humidity: float,
+    moisture: float,
+    moisture_p: float
+) -> float:
 
-# ]
+    input_data = pd.DataFrame([{
+        "temperature": temperature,
+        "humidity": humidity,
+        "moisture": moisture,
+        "moisture_p": moisture_p
+    }])
+
+    prediction = model.predict(input_data)[0]
+
+    return round(float(prediction), 2)
+
+# Use the port that is on the front end_if you dont use you will have a CORS error
+origins = [
+    "http://localhost:5173"
+
+]
 
 
 # # Set up our CORS _Cross-Origin Resource Sharing(CORS) provides unauthorized webistes ,endpoints,or
