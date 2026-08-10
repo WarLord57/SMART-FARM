@@ -37,7 +37,7 @@ async def test():
 # client.py
 # import requests
 
-# url_esp8266 = "http://192.168.8.13:80/test"  # Replace with your FastAPI server URL
+url_esp8266 = "http://192.168.8.19/test"  # Replace with your FastAPI server URL
 
 #Instance of fastapi app
 # class DataModel():
