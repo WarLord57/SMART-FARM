@@ -11,6 +11,7 @@
 # import pandas as pd
 # import requests
 # import joblib
+#from pathlib import Path
 from fastapi import FastAPI
 
 app = FastAPI()
@@ -94,7 +95,13 @@ async def test():
 
 
 # # Load the trained model once when this module is imported
-# model = joblib.load("soil_watering_model.pkl")
+
+
+# BASE_DIR = Path(__file__).resolve().parent
+
+# MODEL_PATH = BASE_DIR / "soil_watering_model.pkl"
+
+# model = joblib.load(MODEL_PATH)
 
 
 # def predict_watering_time(
