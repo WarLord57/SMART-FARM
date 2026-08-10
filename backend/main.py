@@ -40,30 +40,28 @@ async def test():
 # url_esp8266 = "http://192.168.8.13:80/test"  # Replace with your FastAPI server URL
 
 #Instance of fastapi app
-app = FastAPI()
+# class DataModel():
+#     def connect_db():
+#         try:
+#             #Connect to mongo db client
+#             myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 
-class DataModel():
-    def connect_db():
-        try:
-            #Connect to mongo db client
-            myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+#             #get list of databses 
+#             dblist = myclient.list_database_names()
 
-            #get list of databses 
-            dblist = myclient.list_database_names()
+#             #check if data
+#             if "API" in dblist:
 
-            #check if data
-            if "API" in dblist:
-
-                mydb = myclient["API"]
-                mycol = mydb["sensor_data"]
-            else:
-                mydb = myclient["API"]
-                mycol = mydb["sensor_data"]
-                mycol.insert_one({'name': 'Example Sesnor','value':0,"timestamp":"NA"})
+#                 mydb = myclient["API"]
+#                 mycol = mydb["sensor_data"]
+#             else:
+#                 mydb = myclient["API"]
+#                 mycol = mydb["sensor_data"]
+#                 mycol.insert_one({'name': 'Example Sesnor','value':0,"timestamp":"NA"})
             
-            return mycol
-        except TimeoutError as e :
-            print(e)
+#             return mycol
+#         except TimeoutError as e :
+#             print(e)
 
 #Create a model for thr sensor data to received
 # class Sensor_data(BaseModel):
