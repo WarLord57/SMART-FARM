@@ -33,7 +33,7 @@ const [isPumpStatus, setPumpStatus] = useState([]);
       // setLightindicatorsys(!lightIndicatorsys);
       // setLightindicatorcomp(!lightIndicatorcomp);
 
-      const response =await Axios_api.get('/api/livefeed/');
+      const response =await Axios_api.get('/svc/api/livefeed/');
 
       console.log(response.data)
       if ('message' in response.data){
@@ -109,7 +109,7 @@ const data = {
 console.log(data)
 
 
-const response = await Axios_api.post('/api/switch/',data)
+const response = await Axios_api.post('/svc/api/switch/',data)
 
 console.log(response.data)
 if(isPumpStatus==false){
