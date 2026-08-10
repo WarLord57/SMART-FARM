@@ -1,26 +1,257 @@
-from xmlrpc import client
-
-from fastapi import FastAPI,Depends #create api
-import pymongo #connect to mongodb
-from pymongo.server_api import ServerApi
-
-import uvicorn #run the api
-from pydantic import BaseModel,Field
-from datetime import date,time,datetime,timedelta
-import json
-from bson import json_util
-from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
-import requests
-import joblib
+import os
 from pathlib import Path
-from fastapi import FastAPI
+from datetime import date, time, datetime, timedelta
+from typing import Optional
 
-app = FastAPI()
+import joblib
+import pandas as pd
+import pymongo
+import requests
 
+from bson import ObjectId
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+
+# ============================================================
+# FASTAPI
+# ============================================================
+
+app = FastAPI(
+    title="Smart Irrigation API",
+    version="1.0.0"
+)
+
+
+# ============================================================
+# CORS
+# ============================================================
+
+# Add your Vercel frontend URL here later.
+# For development, localhost:5173 is enough.
+
+origins = [
+    "http://localhost:5173",
+]
+
+# Optional frontend URL from Vercel environment variable
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
+if FRONTEND_URL:
+    origins.append(FRONTEND_URL)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ============================================================
+# ENVIRONMENT VARIABLES
+# ============================================================
+
+MONGO_URI = os.getenv("MONGO_URI")
+
+MONGO_DATABASE = os.getenv(
+    "MONGO_DATABASE",
+    "API"
+)
+
+MONGO_COLLECTION = os.getenv(
+    "MONGO_COLLECTION",
+    "sensor_data"
+)
+
+ESP8266_URL = os.getenv(
+    "ESP8266_URL",
+    ""
+)
+
+
+# ============================================================
+# MONGODB
+# ============================================================
+
+mongo_client = None
+sensor_collection = None
+
+
+def get_database():
+    """
+    Create MongoDB connection when needed.
+
+    We don't connect to MongoDB during module import.
+    This prevents MongoDB problems from killing the
+    entire FastAPI deployment.
+    """
+
+    global mongo_client
+    global sensor_collection
+
+    if sensor_collection is not None:
+        return sensor_collection
+
+    if not MONGO_URI:
+        raise RuntimeError(
+            "MONGO_URI environment variable is not configured."
+        )
+
+    mongo_client = pymongo.MongoClient(
+        MONGO_URI,
+        serverSelectionTimeoutMS=5000
+    )
+
+    # Test connection
+    mongo_client.admin.command("ping")
+
+    database = mongo_client[MONGO_DATABASE]
+
+    sensor_collection = database[MONGO_COLLECTION]
+
+    return sensor_collection
+
+
+# ============================================================
+# MACHINE LEARNING MODEL
+# ============================================================
+
+BASE_DIR = Path(__file__).resolve().parent
+
+MODEL_PATH = BASE_DIR / "soil_watering_model.pkl"
+
+model = None
+
+
+def get_model():
+    """
+    Load the ML model only when it is actually needed.
+    """
+
+    global model
+
+    if model is not None:
+        return model
+
+    if not MODEL_PATH.exists():
+        raise RuntimeError(
+            f"ML model not found: {MODEL_PATH}"
+        )
+
+    try:
+        model = joblib.load(MODEL_PATH)
+    except Exception as error:
+        raise RuntimeError(
+            f"Could not load ML model: {error}"
+        )
+
+    return model
+
+
+def predict_watering_time(
+    temperature: float,
+    humidity: float,
+    moisture: float,
+    moisture_p: float
+) -> float:
+
+    ml_model = get_model()
+
+    input_data = pd.DataFrame([
+        {
+            "temperature": temperature,
+            "humidity": humidity,
+            "moisture": moisture,
+            "moisture_p": moisture_p
+        }
+    ])
+
+    prediction = ml_model.predict(input_data)[0]
+
+    return round(float(prediction), 2)
+
+
+# ============================================================
+# PYDANTIC MODELS
+# ============================================================
+
+class SensorData(BaseModel):
+
+    name: str
+
+    temperature: float
+
+    humidity: float
+
+    moisture: float
+
+    moisture_p: float
+
+    status_moisture: Optional[str] = None
+
+    component1: int
+
+    datestamp: date
+
+    timestamp: time
+
+
+class FilterValue(BaseModel):
+
+    start_datestamp: date = Field(
+        default_factory=date.today
+    )
+
+    end_datestamp: date = Field(
+        default_factory=date.today
+    )
+
+    timestamp: Optional[time] = None
+
+    frequency: int = 0
+
+
+class SwitchValue(BaseModel):
+
+    auto: bool = False
+
+    number: int = 0
+
+
+class PredictionData(BaseModel):
+
+    temperature: float
+
+    humidity: float
+
+    moisture: float
+
+    moisture_p: float
+
+
+# ============================================================
+# HELPER
+# ============================================================
+
+def serialize_document(document):
+
+    if "_id" in document:
+        document["_id"] = str(document["_id"])
+
+    return document
+
+
+# ============================================================
+# BASIC TEST ENDPOINTS
+# ============================================================
 
 @app.get("/")
 async def root():
+
     return {
         "message": "Smart Irrigation API is running"
     }
@@ -28,313 +259,433 @@ async def root():
 
 @app.get("/api/test")
 async def test():
+
     return {
         "message": "FastAPI is working on Vercel"
     }
-# This api will received data from arduino esp8266 and store data in mongo db
-
-# url for the arduino esp8266 API endpoint
-# client.py
-# import requests
-
-url_esp8266 = "http://192.168.8.19/test"  # Replace with your FastAPI server URL
-
-#Instance of fastapi app
-# class DataModel():
-#     def connect_db():
-#         try:
-#             #Connect to mongo db client
-#             myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-
-#             #get list of databses 
-#             dblist = myclient.list_database_names()
-
-#             #check if data
-#             if "API" in dblist:
-
-#                 mydb = myclient["API"]
-#                 mycol = mydb["sensor_data"]
-#             else:
-#                 mydb = myclient["API"]
-#                 mycol = mydb["sensor_data"]
-#                 mycol.insert_one({'name': 'Example Sesnor','value':0,"timestamp":"NA"})
-            
-#             return mycol
-#         except TimeoutError as e :
-#             print(e)
-
-#Create a model for thr sensor data to received
-# class Sensor_data(BaseModel):
-#     name:str
-#     temperature:float
-#     humidity:float
-#     moisture:float
-#     moisture_p:float
-#     status_moisture:str | None = None,
-#     component1:int
-#     datestamp:date
-#     timestamp: time
-
-# #Create a model for the filter values that will be passed on ;tHE DEAFULT 
-# class Filter_value(BaseModel):
-#     start_datestamp:date=Field(default=(datetime.now().date()))
-#     end_datestamp:date=Field(default=(datetime.now().date()))
-#     timestamp:time=Field(default=(datetime.now().time()))
-#     frequency: int=Field(default=0)
-
-# #Create data model for validating live feed data         
-# class Live_feed(BaseModel):
-#     latest_data:str
-
-# class Switch_Value(BaseModel):
-#      auto:bool=Field(default=False)
-#      number:int =Field(default=0)
-
-# # Load the trained model once when this module is imported
 
 
-# BASE_DIR = Path(__file__).resolve().parent
+# ============================================================
+# HEALTH CHECK
+# ============================================================
 
-# MODEL_PATH = BASE_DIR / "soil_watering_model.pkl"
+@app.get("/api/health")
+async def health():
 
-# model = joblib.load(MODEL_PATH)
+    result = {
+        "api": "ok",
+        "mongodb": "not tested",
+        "model": "not tested"
+    }
 
+    # Test MongoDB
+    try:
 
-# def predict_watering_time(
-#     temperature: float,
-#     humidity: float,
-#     moisture: float,
-#     moisture_p: float
-# ) -> float:
+        collection = get_database()
 
-#     input_data = pd.DataFrame([{
-#         "temperature": temperature,
-#         "humidity": humidity,
-#         "moisture": moisture,
-#         "moisture_p": moisture_p
-#     }])
+        collection.database.client.admin.command("ping")
 
-#     prediction = model.predict(input_data)[0]
+        result["mongodb"] = "connected"
 
-#     return round(float(prediction), 2)
+    except Exception as error:
 
-# # Use the port that is on the front end_if you dont use you will have a CORS error
-# origins = [
-#     "http://localhost:5173"
-
-# ]
+        result["mongodb"] = f"error: {str(error)}"
 
 
-# # Set up our CORS _Cross-Origin Resource Sharing(CORS) provides unauthorized webistes ,endpoints,or
-# # servers from accessing your API
+    # Test model
+    try:
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"]
-# )
+        get_model()
 
-# #post the data from arduino esp8266 API all the data in database
-# @app.post('/svc/api/')
+        result["model"] = "loaded"
 
-# async def  post_data(sensor_data:Sensor_data, connect_status: object=Depends(DataModel.connect_db)):
-#         print(connect_status)
-#         #Change date key to string to insert in mongodb
-#         date_str = sensor_data.datestamp.strftime("%Y-%m-%d %H:%M:%S")
-#         time_str = sensor_data.timestamp.strftime("%H:%M:%S")
-       
-#         try:
-           
-#             connect_status.insert_one({'name': sensor_data.name,
-#                                        'temperature':sensor_data.temperature,
-#                                        'humidty':sensor_data.humidity,
-#                                        'moisture':sensor_data.moisture,
-#                                        'moisture_p':sensor_data.moisture_p,
-#                                        'status_moisture':sensor_data.status_moisture,
-#                                        'component1':sensor_data.component1,
-#                                        'datestamp':date_str,
-#                                        'timestamp':time_str})
-           
-#             return{"message":"data posted successfuly"}
-#         except TypeError as e:
-#             return{"message":"Check console for error"}
+    except Exception as error:
 
-# #Get all the data from the collection from database
-# @app.get('/svc/api/')
-
-# async def  get_data(connect_status: object=Depends(DataModel.connect_db)):
-#         try:
-           
-#            # Query the database to retrieve all data
-            
-#             sd = connect_status.find({})
-#             json_string = json_util.dumps(sd)
-            
-#             return json_string
-#         except TypeError as e:
-#             return{"message":"Check console for error"}
-        
-# #Eendpoint to filter the temretarics toggles for sensors data
-# # Get all the data based on filter   
-# @app.post('/svc/api/agg')
-# async def get_agg_data(filter_value:Filter_value,connect_status:object=Depends(DataModel.connect_db)):
-#         try:
-#           print(filter_value)
-#           sd = connect_status.find({})
-#           unf_data =pd.DataFrame(sd)
-          
-#           unf_data['datestamp']= pd.to_datetime(unf_data['datestamp'])
-#           filter_df = unf_data[unf_data['datestamp'].dt.strftime('%Y-%m-%d').between(str(filter_value.start_datestamp), str(filter_value.end_datestamp))]
-          
-#           if filter_df.empty:
-#               filter_df=""
-#               filter_df = {"message":"No data to retrieve"}
-#           else:
-             
-#                # Select only integer columns
-#                float_cols_df= filter_df.select_dtypes(include='float64')
-#                num_df =float_cols_df.mean()
-#                filter_df = num_df
+        result["model"] = f"error: {str(error)}"
 
 
-               
-#           return filter_df
-          
-#         except TypeError as e:
-#           return{"message":"Check consolde for error"}
-        
-# #Check if the is latest to data for live feed
-# @app.get('/svc/api/livefeed/')
-# async def get_live_feed(connect_status:object=Depends(DataModel.connect_db)):
-            
-
-#             sd = connect_status.find({})
-#             unf_data =pd.DataFrame(sd)
-#             # print(unf_data)
-          
-#             unf_data['datestamp']=pd.to_datetime(unf_data['datestamp'])
-#             time_30_seconds_ago = datetime.now()- timedelta(seconds=30)
-
-        
-#             # print(unf_data)
-
-#             # Filter for current days data
-           
-#             unf_data = unf_data[(unf_data['datestamp']==datetime.now().strftime("%Y-%m-%d"))]
-          
-
-        
-#             # filter_df = unf_data[(unf_data['timestamp'] >=time_30_seconds_ago.time().strftime("%H:%M:%S") & unf_data['timestamp'] < datetime.now().time().strftime("%H:%M:%S"))]
-#             unf_data['timestamp']=pd.to_datetime(unf_data['timestamp'],format="%H:%M:%S")
-#             #print filtered data
-#             # print(f"printing filtered data :/n{filter_df}")
-#             filter_df = unf_data.set_index('timestamp')
-
-#             # Filter for data between 9 AM and 12 PM
-           
-#             filter_df = filter_df.between_time(time_30_seconds_ago.time().strftime("%H:%M:%S"), datetime.now().time().strftime("%H:%M:%S"))
-#            # Convert time objects to string before JSON serialization
-#             filter_df= filter_df.tail(1)
-           
-#             if len(filter_df.index) == 0:
-#                 filter_df=""
-#                 filter_df = {"message":"Smart Irrigation system offline"}
-#                 print("Smart Irrigation system offline")
-#             else:
-#                 #  if len(filter_df.index)>2:
-#                 #      print(len(filter_df))
-#                 #      filter_df = filter_df.iloc[-1]
-#                 #      filter_df = {
-#                 #     "temperature":"111",
-#                 #     "humidity":"111",
-#                 #     "moisture":"111",
-#                 #     "moisture_p":"111",
-#                 #     "status":"111",
-#                 #     #  "component": latest_record_iloc["component1"],
-#                 #     }
-#                 #  else:
-#                 print(str(filter_df['temperature'].values).replace("[", "").replace("]", ""))
-#                 print(filter_df)
-
-#                 temperature = float(filter_df['temperature'].iloc[0])
-#                 humidity = float(filter_df['humidty'].iloc[0])
-#                 moisture = float(filter_df['moisture'].iloc[0])
-#                 moisture_p = float(filter_df['moisture_p'].iloc[0])
-
-#                 status = str(filter_df['status_moisture'].iloc[0])
-#                 component = int(filter_df['component1'].iloc[0])
-#                 # preidct watering time using the model
-#                 hours = predict_watering_time(
-#                         temperature=temperature,
-#                         humidity=humidity,
-#                         moisture=moisture,
-#                         moisture_p=moisture_p
-#                     )
-
-#                 filter_df = {
-#                         "temperature": temperature,
-#                         "humidity": humidity,
-#                         "moisture": moisture,
-#                         "moisture_p": moisture_p,
-#                         "status": status,
-#                         "component": component,
-#                         "hours": hours
-#                     }
-
-#                 print(filter_df)
-#                 print({key: type(value) for key, value in filter_df.items()})
-#                 print("Smart Irrigation system online")
-
-#             return filter_df
+    return result
 
 
+# ============================================================
+# MONGODB TEST
+# ============================================================
+
+@app.get("/api/mongo-test")
+async def mongo_test():
+
+    try:
+
+        collection = get_database()
+
+        collection.database.client.admin.command("ping")
+
+        return {
+            "success": True,
+            "message": "MongoDB Atlas connection successful"
+        }
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"MongoDB connection failed: {str(error)}"
+        )
 
 
+# ============================================================
+# POST SENSOR DATA
+# ============================================================
+
+@app.post("/svc/api/")
+async def post_data(sensor_data: SensorData):
+
+    try:
+
+        collection = get_database()
+
+        document = {
+            "name": sensor_data.name,
+
+            "temperature": sensor_data.temperature,
+
+            "humidity": sensor_data.humidity,
+
+            "moisture": sensor_data.moisture,
+
+            "moisture_p": sensor_data.moisture_p,
+
+            "status_moisture": sensor_data.status_moisture,
+
+            "component1": sensor_data.component1,
+
+            "datestamp": sensor_data.datestamp.isoformat(),
+
+            "timestamp": sensor_data.timestamp.isoformat(),
+
+            "created_at": datetime.utcnow()
+        }
+
+        result = collection.insert_one(document)
+
+        return {
+            "success": True,
+            "message": "Data posted successfully",
+            "id": str(result.inserted_id)
+        }
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not save sensor data: {str(error)}"
+        )
 
 
+# ============================================================
+# GET ALL SENSOR DATA
+# ============================================================
+
+@app.get("/svc/api/")
+async def get_data():
+
+    try:
+
+        collection = get_database()
+
+        documents = collection.find(
+            {}
+        ).sort(
+            "_id",
+            pymongo.DESCENDING
+        )
+
+        data = []
+
+        for document in documents:
+
+            data.append(
+                serialize_document(document)
+            )
+
+        return data
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not retrieve sensor data: {str(error)}"
+        )
 
 
-# @app.post('/api/switch/')
+# ============================================================
+# AGGREGATED SENSOR DATA
+# ============================================================
 
-# async def switch_pump(switch_value:Switch_Value,connect_status:object=Depends(DataModel.connect_db)):
-#             print("switching...")
-#             data = {
-#             "auto":switch_value.auto,
-#             "number":switch_value.number,
-#             }
-#             print(data)
-#             try:
-#                 response = requests.post(url=url_esp8266,json=data)
-#                 response.raise_for_status()
-#                 print(f"Response JSON:{response.text}")
-#                 return response.text
+@app.post("/svc/api/agg")
+async def get_agg_data(filter_value: FilterValue):
 
-#             except requests.exceptions.RequestException as e:
-#                     print(f"error handling reuqtes{e}")
+    try:
+
+        collection = get_database()
+
+        documents = list(
+            collection.find({})
+        )
+
+        if not documents:
+
+            return {
+                "message": "No data to retrieve"
+            }
+
+        df = pd.DataFrame(documents)
+
+        if df.empty:
+
+            return {
+                "message": "No data to retrieve"
+            }
+
+        # Convert datestamp
+        df["datestamp"] = pd.to_datetime(
+            df["datestamp"],
+            errors="coerce"
+        )
+
+        # Remove invalid dates
+        df = df.dropna(
+            subset=["datestamp"]
+        )
+
+        # Date filtering
+        start_date = pd.Timestamp(
+            filter_value.start_datestamp
+        )
+
+        end_date = (
+            pd.Timestamp(
+                filter_value.end_datestamp
+            )
+            + pd.Timedelta(days=1)
+            - pd.Timedelta(seconds=1)
+        )
+
+        df = df[
+            (df["datestamp"] >= start_date)
+            &
+            (df["datestamp"] <= end_date)
+        ]
+
+        if df.empty:
+
+            return {
+                "message": "No data to retrieve"
+            }
+
+        # Numeric columns
+        numeric_columns = [
+            "temperature",
+            "humidity",
+            "moisture",
+            "moisture_p",
+            "component1"
+        ]
+
+        existing_columns = [
+            column
+            for column in numeric_columns
+            if column in df.columns
+        ]
+
+        averages = (
+            df[existing_columns]
+            .apply(pd.to_numeric, errors="coerce")
+            .mean()
+            .to_dict()
+        )
+
+        return averages
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Aggregation failed: {str(error)}"
+        )
 
 
+# ============================================================
+# LIVE FEED
+# ============================================================
+
+@app.get("/svc/api/livefeed/")
+async def get_live_feed():
+
+    try:
+
+        collection = get_database()
+
+        thirty_seconds_ago = (
+            datetime.utcnow()
+            - timedelta(seconds=30)
+        )
+
+        documents = list(
+            collection.find({})
+            .sort("_id", pymongo.DESCENDING)
+            .limit(20)
+        )
+
+        if not documents:
+
+            return {
+                "message": "Smart Irrigation system offline"
+            }
+
+        df = pd.DataFrame(documents)
+
+        if df.empty:
+
+            return {
+                "message": "Smart Irrigation system offline"
+            }
+
+        # Make timestamp into datetime
+        if "timestamp" in df.columns:
+
+            df["timestamp_dt"] = pd.to_datetime(
+                df["timestamp"],
+                format="%H:%M:%S",
+                errors="coerce"
+            )
+
+        # Get latest record
+        latest = df.iloc[0]
+
+        temperature = float(
+            latest["temperature"]
+        )
+
+        humidity = float(
+            latest["humidity"]
+        )
+
+        moisture = float(
+            latest["moisture"]
+        )
+
+        moisture_p = float(
+            latest["moisture_p"]
+        )
+
+        status = str(
+            latest.get(
+                "status_moisture",
+                ""
+            )
+        )
+
+        component = int(
+            latest.get(
+                "component1",
+                0
+            )
+        )
+
+        # ML prediction
+        hours = predict_watering_time(
+            temperature=temperature,
+            humidity=humidity,
+            moisture=moisture,
+            moisture_p=moisture_p
+        )
+
+        return {
+            "temperature": temperature,
+            "humidity": humidity,
+            "moisture": moisture,
+            "moisture_p": moisture_p,
+            "status": status,
+            "component": component,
+            "hours": hours
+        }
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Live feed failed: {str(error)}"
+        )
 
 
+# ============================================================
+# ML PREDICTION
+# ============================================================
 
-# @app.post("/svc/predict")
-# async def predict(data: dict):
+@app.post("/api/predict")
+async def predict(data: PredictionData):
 
-#     hours = predict_watering_time(
-#         temperature=data["temperature"],
-#         humidity=data["humidity"],
-#         moisture=data["moisture"],
-#         moisture_p=data["moisture_p"]
-#     )
+    try:
 
-#     return {
-#         "hours_until_watering": hours
-#     }
-            
-# # Run Uvicorn if the script is executed directly
-# if __name__ == "__main__":
-#     uvicorn.run("main:app", host="192.168.8.19", port=8000, reload=True)
+        hours = predict_watering_time(
+            temperature=data.temperature,
+            humidity=data.humidity,
+            moisture=data.moisture,
+            moisture_p=data.moisture_p
+        )
+
+        return {
+            "hours_until_watering": hours
+        }
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Prediction failed: {str(error)}"
+        )
 
 
-#     # host="192.168.8.7"
+# ============================================================
+# ESP8266 PUMP SWITCH
+# ============================================================
+
+@app.post("/api/switch/")
+async def switch_pump(
+    switch_value: SwitchValue
+):
+
+    if not ESP8266_URL:
+
+        raise HTTPException(
+            status_code=500,
+            detail="ESP8266_URL is not configured"
+        )
+
+    data = {
+        "auto": switch_value.auto,
+        "number": switch_value.number
+    }
+
+    try:
+
+        response = requests.post(
+            ESP8266_URL,
+            json=data,
+            timeout=5
+        )
+
+        response.raise_for_status()
+
+        return {
+            "success": True,
+            "response": response.text
+        }
+
+    except requests.exceptions.RequestException as error:
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"ESP8266 request failed: {str(error)}"
+        )
