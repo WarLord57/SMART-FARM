@@ -14,7 +14,7 @@ const Sensor_section = () => {
   //Fetch the data sensor data from back end to display in com,ponent
   const fetchSensor_data = async()=>{
     try{
-         const response = await Axios_api.get('/api')
+         const response = await Axios_api.get('/svc/api')
          console.log(JSON.parse(response.data))
          const sensor_data =JSON.parse(response.data)
          setSensor_data(sensor_data)

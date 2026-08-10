@@ -299,7 +299,7 @@ async def switch_pump(switch_value:Switch_Value,connect_status:object=Depends(Da
 
 
 
-@app.post("/predict")
+@app.post("/svc/predict")
 async def predict(data: dict):
 
     hours = predict_watering_time(

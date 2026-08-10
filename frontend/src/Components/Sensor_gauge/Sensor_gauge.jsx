@@ -38,7 +38,7 @@ const Sensor_gauge = () => {
   const fetchGauge_data = async()=>{
      console.log(filterData)
     try{
-      const response = await Axios_api.post('/api/agg/',filterData)
+      const response = await Axios_api.post('/svc/api/agg/',filterData)
       console.log("Fetching ....filter data")
       console.log(response.data)
     
