@@ -1,19 +1,19 @@
-from xmlrpc import client
+# from xmlrpc import client
 
 from fastapi import FastAPI,Depends #create api
-import pymongo #connect to mongodb
-from pymongo.server_api import ServerApi
+# import pymongo #connect to mongodb
+# from pymongo.server_api import ServerApi
 
-import uvicorn #run the api
-from pydantic import BaseModel,Field
-from datetime import date,time,datetime,timedelta
-import json
-from bson import json_util
-from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
-import requests
-import joblib
-from pathlib import Path
+# import uvicorn #run the api
+# from pydantic import BaseModel,Field
+# from datetime import date,time,datetime,timedelta
+# import json
+# from bson import json_util
+# from fastapi.middleware.cors import CORSMiddleware
+# import pandas as pd
+# import requests
+# import joblib
+# from pathlib import Path
 # from fastapi import FastAPI
 
 app = FastAPI()
