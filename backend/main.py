@@ -92,10 +92,6 @@ class Switch_Value(BaseModel):
      auto:bool=Field(default=False)
      number:int =Field(default=0)
 
-import joblib
-import pandas as pd
-
-
 # Load the trained model once when this module is imported
 
 
