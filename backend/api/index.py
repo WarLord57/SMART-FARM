@@ -18,16 +18,7 @@ from fastapi import FastAPI,Depends #create api
 
 app = FastAPI()
 
-@app.get("/api/routes")
-async def routes():
-    return [
-        {
-            "path": route.path,
-            "methods": list(route.methods or [])
-        }
-        for route in app.routes
-    ]
-@app.get("/api")
+@app.get("/")
 async def root():
     return {
         "message": "Smart Irrigation API is running"
