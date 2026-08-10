@@ -10,7 +10,7 @@ from bson import json_util
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import requests
-
+import joblib
 
 #This api will received data from arduino esp8266 and store data in mongo db
 
@@ -72,6 +72,32 @@ class Live_feed(BaseModel):
 class Switch_Value(BaseModel):
      auto:bool=Field(default=False)
      number:int =Field(default=0)
+
+import joblib
+import pandas as pd
+
+
+# Load the trained model once when this module is imported
+model = joblib.load("soil_watering_model.pkl")
+
+
+def predict_watering_time(
+    temperature: float,
+    humidity: float,
+    moisture: float,
+    moisture_p: float
+) -> float:
+
+    input_data = pd.DataFrame([{
+        "temperature": temperature,
+        "humidity": humidity,
+        "moisture": moisture,
+        "moisture_p": moisture_p
+    }])
+
+    prediction = model.predict(input_data)[0]
+
+    return round(float(prediction), 2)
 
 # Use the port that is on the front end_if you dont use you will have a CORS error
 origins = [
@@ -212,25 +238,45 @@ async def get_live_feed(connect_status:object=Depends(DataModel.connect_db)):
                 #  else:
                 print(str(filter_df['temperature'].values).replace("[", "").replace("]", ""))
                 print(filter_df)
-                temperature = str(filter_df['temperature'].values).replace("[", "").replace("]", "")
-                humidity =str(filter_df['humidty'].values).replace("[", "").replace("]", "")
-                moisture = str(filter_df['moisture'].values).replace("[", "").replace("]", "")
-                moisture_p =str(filter_df['moisture_p'].values).replace("[", "").replace("]", "")
-                status =str(filter_df['status_moisture'].values).replace("[", "").replace("]", "")
-                component =str(filter_df['component1'].values).replace("[", "").replace("]", "")
+
+                temperature = float(filter_df['temperature'].iloc[0])
+                humidity = float(filter_df['humidty'].iloc[0])
+                moisture = float(filter_df['moisture'].iloc[0])
+                moisture_p = float(filter_df['moisture_p'].iloc[0])
+
+                status = str(filter_df['status_moisture'].iloc[0])
+                component = int(filter_df['component1'].iloc[0])
+                # preidct watering time using the model
+                hours = predict_watering_time(
+                        temperature=temperature,
+                        humidity=humidity,
+                        moisture=moisture,
+                        moisture_p=moisture_p
+                    )
+
                 filter_df = {
-                "temperature":temperature,
-                "humidity":humidity,
-                "moisture":moisture,
-                "moisture_p":moisture_p,
-                "status":status,
-                 "component": component
-                }
+                        "temperature": temperature,
+                        "humidity": humidity,
+                        "moisture": moisture,
+                        "moisture_p": moisture_p,
+                        "status": status,
+                        "component": component,
+                        "hours": hours
+                    }
+
                 print(filter_df)
+                print({key: type(value) for key, value in filter_df.items()})
                 print("Smart Irrigation system online")
+
             return filter_df
 
-         
+
+
+
+
+
+
+
 @app.post('/api/switch/')
 
 async def switch_pump(switch_value:Switch_Value,connect_status:object=Depends(DataModel.connect_db)):
@@ -249,10 +295,27 @@ async def switch_pump(switch_value:Switch_Value,connect_status:object=Depends(Da
             except requests.exceptions.RequestException as e:
                     print(f"error handling reuqtes{e}")
 
-          
-     
 
+
+
+
+@app.post("/predict")
+async def predict(data: dict):
+
+    hours = predict_watering_time(
+        temperature=data["temperature"],
+        humidity=data["humidity"],
+        moisture=data["moisture"],
+        moisture_p=data["moisture_p"]
+    )
+
+    return {
+        "hours_until_watering": hours
+    }
             
 # Run Uvicorn if the script is executed directly
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="192.168.8.7", port=8000, reload=True)
+    uvicorn.run("main:app", host="192.168.8.19", port=8000, reload=True)
+
+
+    # host="192.168.8.7"

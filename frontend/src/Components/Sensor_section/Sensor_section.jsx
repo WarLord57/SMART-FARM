@@ -33,8 +33,8 @@ const Sensor_section = () => {
   return(
     <Container>
       <div className='outer-section'>
-        <h2 className='section-title'>Sensor Data</h2>
-        
+        {/* <h2 className='section-title'>Sensor Data</h2>
+         */}
         <div className='sensor1-section'>
         
       <table className='table-data'>

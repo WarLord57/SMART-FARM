@@ -16,8 +16,10 @@ const Sensor_gauge_live = () => {
  const [gauge3_data,setGaugedata3] = useState([0]);
  const [gauge4_data,setGaugedata4] = useState([0]);
  const [gauge5_data,setGaugedata5] = useState([""]);
+ const [gauge6_data,setGaugedata6] = useState([0]);
 
- const[lightIndicatorsys,setLightindicatorsys] = useState([])
+
+const[lightIndicatorsys,setLightindicatorsys] = useState([])
 const[lightIndicatorcomp,setLightindicatorcomp] = useState([])
 const [status,setStatus]= useState([])
 const [isButtonDisabled, setIsButtonDisabled] = useState([]);
@@ -42,6 +44,7 @@ const [isPumpStatus, setPumpStatus] = useState([]);
       setGaugedata3(0)
       setGaugedata4(0)
       setGaugedata5("")
+      setGaugedata6(0)
       setLightindicatorsys(!lightIndicatorsys);
       setLightindicatorcomp(!lightIndicatorcomp);
       setPumpStatus(false)
@@ -53,6 +56,7 @@ const [isPumpStatus, setPumpStatus] = useState([]);
       setGaugedata3(Math.floor(response.data.moisture*100)/100)
       setGaugedata4(Math.floor(response.data.moisture_p*100)/100)
       setGaugedata5(response.data.status)
+      setGaugedata6(response.data.hours)
       setStatus("System irrigation is online")
       setLightindicatorsys(lightIndicatorsys);
       if(response.data.component==1){
@@ -79,6 +83,7 @@ const [isPumpStatus, setPumpStatus] = useState([]);
       setGaugedata3(0)
       setGaugedata4(0)
       setGaugedata5("")
+      setGaugedata6(0)
     }
 
  }
@@ -178,6 +183,8 @@ console.log(response.data)
          <div className={lightIndicatorcomp ? 'light-indicator-on' : 'light-indicator-off'}> </div>
         <label> Water-Pump</label>
          <h2><p className='status-moisture'>{gauge5_data}</p></h2>
+         <label> Hours_until_watering </label>
+         <h3><p className='status-water-hours'><br></br>{gauge6_data}</p></h3>
 
          <div className="pump-control-section">
           <label>Automated</label>
