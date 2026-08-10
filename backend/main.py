@@ -16,21 +16,21 @@ import joblib
 from pathlib import Path
 # from fastapi import FastAPI
 
-# app = FastAPI()
+app = FastAPI()
 
 
-# @app.get("/")
-# async def root():
-#     return {
-#         "message": "Smart Irrigation API is running"
-#     }
+@app.get("/")
+async def root():
+    return {
+        "message": "Smart Irrigation API is running"
+    }
 
 
-# @app.get("/api/test")
-# async def test():
-#     return {
-#         "message": "FastAPI is working on Vercel"
-#     }
+@app.get("/api/test")
+async def test():
+    return {
+        "message": "FastAPI is working on Vercel"
+    }
 # This api will received data from arduino esp8266 and store data in mongo db
 
 # url for the arduino esp8266 API endpoint
