@@ -118,7 +118,7 @@ app.add_middleware(
 )
 
 #post the data from arduino esp8266 API all the data in database
-@app.post('/api/')
+@app.post('/svc/api/')
 
 async def  post_data(sensor_data:Sensor_data, connect_status: object=Depends(DataModel.connect_db)):
         print(connect_status)
@@ -143,7 +143,7 @@ async def  post_data(sensor_data:Sensor_data, connect_status: object=Depends(Dat
             return{"message":"Check console for error"}
 
 #Get all the data from the collection from database
-@app.get('/api/')
+@app.get('/svc/api/')
 
 async def  get_data(connect_status: object=Depends(DataModel.connect_db)):
         try:
@@ -159,7 +159,7 @@ async def  get_data(connect_status: object=Depends(DataModel.connect_db)):
         
 #Eendpoint to filter the temretarics toggles for sensors data
 # Get all the data based on filter   
-@app.post('/api/agg')
+@app.post('/svc/api/agg')
 async def get_agg_data(filter_value:Filter_value,connect_status:object=Depends(DataModel.connect_db)):
         try:
           print(filter_value)
@@ -187,7 +187,7 @@ async def get_agg_data(filter_value:Filter_value,connect_status:object=Depends(D
           return{"message":"Check consolde for error"}
         
 #Check if the is latest to data for live feed
-@app.get('/api/livefeed/')
+@app.get('/svc/api/livefeed/')
 async def get_live_feed(connect_status:object=Depends(DataModel.connect_db)):
             
 
