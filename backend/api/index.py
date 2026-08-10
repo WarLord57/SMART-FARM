@@ -18,7 +18,15 @@ from pathlib import Path
 
 app = FastAPI()
 
-
+@app.get("/api/routes")
+async def routes():
+    return [
+        {
+            "path": route.path,
+            "methods": list(route.methods or [])
+        }
+        for route in app.routes
+    ]
 @app.get("/api")
 async def root():
     return {
