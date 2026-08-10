@@ -18,7 +18,12 @@ from fastapi import FastAPI,Depends #create api
 
 app = FastAPI()
 
-@app.get("/")
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/api")
 async def root():
     return {
         "message": "Smart Irrigation API is running"
